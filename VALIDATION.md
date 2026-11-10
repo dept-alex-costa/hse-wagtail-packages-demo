@@ -38,7 +38,7 @@ GitHub releases below subsequently advanced the selected module versions.
 
 ## GitHub validation
 
-Private repository: [dept-alex-costa/hse-wagtail-packages-demo](https://github.com/dept-alex-costa/hse-wagtail-packages-demo).
+Repository: [dept-alex-costa/hse-wagtail-packages-demo](https://github.com/dept-alex-costa/hse-wagtail-packages-demo).
 
 The [initial CI run](https://github.com/dept-alex-costa/hse-wagtail-packages-demo/actions/runs/42791991384)
 passed the release controls and all four package checks on GitHub-hosted runners.

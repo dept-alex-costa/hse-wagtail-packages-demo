@@ -1,196 +1,150 @@
-# HSE Wagtail Packages — release demo
+# Wagtail packages: two lines, independent releases
 
-A standalone monorepo demonstrating the release pattern used by
-`hse-wagtail-packages`, extended to two compatibility lines on **one `main`
-branch**. There is no demo website or production HSE code.
+A small demo showing how to keep **Wagtail 6** and **Wagtail 7.4** packages in
+one repository, with a separate version and release for every module.
 
-See [VALIDATION.md](VALIDATION.md) for the local checks and exact resolved stacks.
+[Releases](https://github.com/dept-alex-costa/hse-wagtail-packages-demo/releases) · [GitHub Actions](https://github.com/dept-alex-costa/hse-wagtail-packages-demo/actions) · [Validation results](VALIDATION.md)
 
-## Structure
+## 1. Choose your line
+
+| Folder | Wagtail | Django | component_lib | important_redirects |
+| --- | --- | --- | --- | --- |
+| `wagtail6` | 6.4.x | 4.2.x | 1.0.1 | 1.0.0 |
+| `wagtail74` | 7.4.x | 5.2.x | 1.1.0 | 1.0.0 |
+
+Use **Python 3.12** for the examples below. The packages accept Python
+`>=3.12,<3.14`; CI uses Python 3.12.
+Choose the line that matches your consuming project. Try the two lines in
+separate environments: they declare different Django/Wagtail requirements.
+
+These are small example modules, not the production HSE packages. The legacy
+line demonstrates compatibility and releases; it is not a recommendation for
+a new production site.
+
+## 2. Install the packages
+
+Choose **pip or Poetry** below. All examples install directly from GitHub using
+an existing tag and the module's subdirectory. You need Git installed. The
+repository is public, so these HTTPS URLs do not need a GitHub token or SSH key.
+The packages have not been published to PyPI.
+
+### With pip
+
+Run inside your project's virtual environment. For a fresh test environment:
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+```
+
+**Wagtail 6 / Django 4.2:**
+
+```bash
+python -m pip install \
+  "hse-demo-component-lib @ git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail6/component_lib-v1.0.1#subdirectory=wagtail6/packages/component-lib" \
+  "hse-demo-important-redirects @ git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail6/important_redirects-v1.0.0#subdirectory=wagtail6/packages/important-redirects"
+```
+
+**Wagtail 7.4 / Django 5.2:**
+
+```bash
+python -m pip install \
+  "hse-demo-component-lib @ git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail74/component_lib-v1.1.0#subdirectory=wagtail74/packages/component-lib" \
+  "hse-demo-important-redirects @ git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail74/important_redirects-v1.0.0#subdirectory=wagtail74/packages/important-redirects"
+```
+
+Keep only the package you need if you do not want both. These commands also
+install the compatible Django/Wagtail dependencies and may update existing
+packages in that environment. The same requirement lines can go in a
+`requirements.txt` file, without the command, quotes or continuation characters.
+
+### With Poetry
+
+Run inside your consuming project, where its `pyproject.toml` is located.
+For a fresh test project, create an empty directory and initialise it first:
+
+```bash
+poetry init --name hse-demo-consumer --python ">=3.12,<3.14" --no-interaction
+poetry env use python3.12
+```
+
+**Wagtail 6 / Django 4.2:**
+
+```bash
+poetry add \
+  "git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail6/component_lib-v1.0.1#subdirectory=wagtail6/packages/component-lib" \
+  "git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail6/important_redirects-v1.0.0#subdirectory=wagtail6/packages/important-redirects"
+```
+
+**Wagtail 7.4 / Django 5.2:**
+
+```bash
+poetry add \
+  "git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail74/component_lib-v1.1.0#subdirectory=wagtail74/packages/component-lib" \
+  "git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail74/important_redirects-v1.0.0#subdirectory=wagtail74/packages/important-redirects"
+```
+
+`poetry add` updates your project's `pyproject.toml` and `poetry.lock` and installs
+the packages. Commit both files. Use Poetry 2.2.1 to match this demo's tooling.
+
+**How the version is selected:** `@wagtail6/component_lib-v1.0.1` selects the
+release; `#subdirectory=wagtail6/packages/component-lib` selects the module.
+The tag and folder must belong to the same line. Use tags instead of `main`.
+
+**About locks:** Poetry uses the consuming project's lockfile. pip does not read
+`poetry.lock`. Neither installer adopts a dependency package's own lockfile;
+those files make this repository's package checks reproducible.
+
+## 3. Create a new release
+
+1. Change the desired module and merge the PR into `main`.
+2. Open [Actions → Release package](https://github.com/dept-alex-costa/hse-wagtail-packages-demo/actions/workflows/release-package.yml).
+3. Click **Run workflow**, keep branch **main**, and choose:
+
+| Input | What to choose |
+| --- | --- |
+| `line` | `wagtail6` or `wagtail74` |
+| `package` | `component_lib` or `important_redirects` |
+| `bump` | `patch`, `minor`, `major`, `current` or `custom` |
+| `custom_version` | Only for `custom`, e.g. `2.3.1` |
+
+The Action validates and builds the selected module, updates its version when
+needed, commits the change and creates a **tag + GitHub Release**, with a wheel
+and source archive attached. Merging a PR alone does not publish a release.
+
+| Increment | Example |
+| --- | --- |
+| `patch` | `1.0.1` → `1.0.2` |
+| `minor` | `1.0.1` → `1.1.0` |
+| `major` | `1.0.1` → `2.0.0` |
+| `current` | Releases the existing version if its tag does not exist yet |
+| `custom` | Uses a final `X.Y.Z` version greater than the current version |
+
+Do not manually change an existing module's version in a feature PR: the
+release Action manages it. Existing tags are never overwritten.
+
+The increment applies to the **selected module's version**, not to Wagtail or
+Django. For example, releasing `wagtail6/component_lib-v1.0.2` does not change
+`wagtail74/component_lib-v1.1.0` or either `important_redirects` module.
+
+## Repository layout
 
 ```text
+wagtail6/packages/
+  component-lib/
+  important-redirects/
+wagtail74/packages/
+  component-lib/
+  important-redirects/
 .github/workflows/
   ci.yml
   release-package.yml
-scripts/
-  release.py
-  check_package.py
-tests/
-  test_release.py
-wagtail6/packages/
-  component-lib/
-    pyproject.toml
-    poetry.lock
-    README.md
-    src/hse_demo_components/
-  important-redirects/
-    pyproject.toml
-    poetry.lock
-    README.md
-    src/hse_demo_redirects/
-wagtail74/packages/
-  component-lib/            # same layout; independent version and lock
-  important-redirects/      # same layout; independent version and lock
 ```
 
-| Line | Wagtail | Django | Python used by CI |
-| --- | --- | --- | --- |
-| `wagtail6` | `>=6.4,<6.5` | `>=4.2.26,<4.3` | 3.12 |
-| `wagtail74` | `>=7.4,<7.5` | `>=5.2.19,<5.3` | 3.12 |
+Every module has its own `pyproject.toml`, `poetry.lock`, `README.md` and `src/`.
+The `main` branch contains both lines. These folders are ordinary Python packages,
+not Git submodules. Only modules receive release versions; the whole repository
+has no shared version.
 
-Each module declares Python `>=3.12,<3.14`. The lockfiles record the exact
-resolved dependencies; the CI checks the combinations above on Python 3.12.
-The legacy line exists to demonstrate the requested release structure; it is
-not a declaration that the legacy stack is suitable for a new production site.
-
-| Release identifier | Distribution | Import |
-| --- | --- | --- |
-| `component_lib` | `hse-demo-component-lib` | `hse_demo_components` |
-| `important_redirects` | `hse-demo-important-redirects` | `hse_demo_redirects` |
-
-The distributions/imports deliberately use demo names. The two lines are
-alternatives for a consumer, not packages to install together in one environment.
-
-## Independent versions and tags
-
-The source of truth is the `version` field in **each module's** `pyproject.toml`.
-Versions do not represent Wagtail versions and do not advance together.
-
-```text
-<line>/<package_name>-v<version>
-
-wagtail6/component_lib-v1.0.1
-wagtail6/important_redirects-v1.0.0
-wagtail74/component_lib-v1.1.0
-wagtail74/important_redirects-v1.0.0
-```
-
-For example, `patch` on `wagtail6/component_lib` changes its version from
-`1.0.0` to `1.0.1`. The other three module versions stay unchanged. A later
-`minor` on `wagtail74/component_lib` changes that module to `1.1.0`.
-
-Only modules receive versions, tags and releases. There is no project-wide
-version, combined project release, root Poetry package or Git submodule.
-
-## Release flow
-
-```mermaid
-flowchart TD
-    A[Module change] --> B[PR to main without a manual version bump]
-    B --> C[Release controls and all four package checks]
-    C --> D[Merge to main]
-    D --> E[Run Release package manually]
-    E --> F[Select line, module and bump]
-    F --> G[Resolve version and reject existing tag]
-    G --> H[Update selected module version]
-    H --> I[Validate lock, install, build and check installed wheel]
-    I --> J[Commit version bump]
-    J --> K[Atomically push main and module tag]
-    K --> L[Create GitHub Release with wheel and source archive]
-```
-
-Merging code does **not** automatically release it. Open **Actions → Release
-package → Run workflow**, choose branch `main`, then select:
-
-| Input | Options |
-| --- | --- |
-| `line` | `wagtail6`, `wagtail74` |
-| `package` | `component_lib`, `important_redirects` |
-| `bump` | `current`, `patch`, `minor`, `major`, `custom` |
-| `custom_version` | Required only for `custom`, e.g. `2.3.1` |
-
-`current` creates the first tag/release for the existing version without a
-version-bump commit. `custom` must be a final `X.Y.Z` version greater than the
-current version. Previews and prereleases are outside this demo.
-
-Releases run one at a time because they all write `main`. A concurrent change
-to `main` causes the atomic push to fail; the workflow never force-pushes or
-moves an existing tag. Notes only include commits/files from the selected module
-and compare against its previous tag **in the same compatibility line**.
-
-The release job builds and publishes in one workflow. A tag pushed using
-`GITHUB_TOKEN` normally does not trigger a second workflow. See
-[GitHub's workflow triggering rules](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
-
-If the tag push succeeds but GitHub Release creation fails, inspect the failed
-run and create the missing Release against that existing tag, attaching the
-matching build artifacts. Do not rerun with a new version or move the tag just
-to recover the Release entry.
-
-## Running locally
-
-Use Python 3.12 and Poetry **2.2.1**, the same Poetry version pinned in CI.
-
-```bash
-python3.12 -m venv /tmp/hse-demo-tools
-/tmp/hse-demo-tools/bin/python -m pip install poetry==2.2.1
-export PATH="/tmp/hse-demo-tools/bin:$PATH"
-export POETRY_VIRTUALENVS_IN_PROJECT=true
-
-python -m unittest discover -s tests -v
-python scripts/check_package.py --line wagtail6 --package component_lib
-python scripts/check_package.py --line wagtail6 --package important_redirects
-python scripts/check_package.py --line wagtail74 --package component_lib
-python scripts/check_package.py --line wagtail74 --package important_redirects
-```
-
-Each package check validates its lock, synchronises its environment, runs
-`pip check`, builds wheel/sdist, installs the wheel and checks its imports and
-the actual Django/Wagtail versions. It restores the editable installation at
-the end. Release-control tests only create tags/commits in disposable local
-repositories; they never publish anything.
-
-Inspect a proposed release locally without changing a version or creating a tag:
-
-```bash
-python scripts/release.py plan \
-  --line wagtail6 --package component_lib --bump patch
-```
-
-When changing dependencies, run `poetry lock` inside the selected module and
-commit both its `pyproject.toml` and `poetry.lock`. Do not manually bump an
-existing module's version in a feature PR. A package's own lock makes its CI
-reproducible; consumers still need their own lockfiles.
-
-## Installing a released demo module
-
-Repository: [dept-alex-costa/hse-wagtail-packages-demo](https://github.com/dept-alex-costa/hse-wagtail-packages-demo).
-The tags below were generated by the release workflow:
-
-```toml
-[tool.poetry.dependencies]
-hse-demo-component-lib = { git = "https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git", tag = "wagtail6/component_lib-v1.0.1", subdirectory = "wagtail6/packages/component-lib" }
-```
-
-For the other line, select its tag **and** its matching subdirectory:
-
-```toml
-[tool.poetry.dependencies]
-hse-demo-component-lib = { git = "https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git", tag = "wagtail74/component_lib-v1.1.0", subdirectory = "wagtail74/packages/component-lib" }
-```
-
-These are alternative examples. Then run `poetry lock` and `poetry install` in
-the consuming project and commit its lock. Authentication for a private Git
-repository must be provided separately; do not put credentials in these files.
-
-## GitHub setup
-
-This directory is a standalone repository scaffold. To run its workflows, its
-contents must be at the **root of its own GitHub repository**, with `main` as
-the default branch. Workflows inside a subdirectory of another repository do
-not activate.
-
-The release job uses the repository's `GITHUB_TOKEN` with `contents: write`;
-it does not need a PAT or publish to PyPI. Repository/organisation settings and
-rulesets must permit that workflow to push its version-bump commit and tags.
-If direct pushes to `main` are prohibited, the release process needs to be
-adapted to a version-bump PR; do not disable the ruleset to make the demo run.
-
-To require CI before merging, configure the `Release controls` check and all
-four `Package checks (...)` checks as required checks for `main`.
-
-## Reference
-
-- Original pattern: `HSEIreland/hse-wagtail-packages`, manual **Release package** workflow.
-- [Poetry lockfile guidance](https://python-poetry.org/docs/basic-usage/#committing-your-poetrylock-file-to-version-control).
-- [Wagtail compatibility matrix](https://docs.wagtail.org/en/stable/releases/upgrading.html#compatible-django-python-versions).
+For local checks and workflow configuration, see [Development](docs/DEVELOPMENT.md).
+For the tested stacks and successful release runs, see [Validation](VALIDATION.md).
