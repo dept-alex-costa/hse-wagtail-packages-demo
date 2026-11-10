@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "hse-demo-component-lib"
-version = "1.0.0"
+version = "1.0.1"
 description = "Example module for independent releases in the wagtail6 compatibility line."
 authors = ["DEPT Demo <demo@example.com>"]
 readme = "README.md"
