@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  POETRY_VERSION: '2.2.1'
+  POETRY_VIRTUALENVS_IN_PROJECT: 'true'
+  POETRY_NO_INTERACTION: '1'
+
+jobs:
+  release-checks:
+    name: Release controls
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test independent versioning and release controls
+        run: python -m unittest discover -s tests -v
+      - name: Prevent manual package version bumps in PRs
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: python scripts/release.py check-pr --base "$BASE_SHA"
+
+  package-checks:
+    name: Package checks (${{ matrix.line }}, ${{ matrix.package }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        line: [wagtail6, wagtail74]
+        package: [component_lib, important_redirects]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned Poetry
+        run: pipx install "poetry==$POETRY_VERSION"
+      - name: Validate lock, install, build and check installed wheel
+        run: python scripts/check_package.py --line "${{ matrix.line }}" --package "${{ matrix.package }}"
+

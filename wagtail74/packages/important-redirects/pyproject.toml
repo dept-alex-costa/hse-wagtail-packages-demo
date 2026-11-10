@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "hse-demo-important-redirects"
+version = "1.0.0"
+description = "Example module for independent releases in the wagtail74 compatibility line."
+authors = ["DEPT Demo <demo@example.com>"]
+readme = "README.md"
+packages = [{ include = "hse_demo_redirects", from = "src" }]
+
+[tool.poetry.dependencies]
+python = ">=3.12,<3.14"
+django = ">=5.2.19,<5.3"
+wagtail = ">=7.4,<7.5"
+
+[build-system]
+requires = ["poetry-core>=2.0,<3.0"]
+build-backend = "poetry.core.masonry.api"

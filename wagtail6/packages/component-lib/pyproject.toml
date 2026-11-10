@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "hse-demo-component-lib"
+version = "1.0.0"
+description = "Example module for independent releases in the wagtail6 compatibility line."
+authors = ["DEPT Demo <demo@example.com>"]
+readme = "README.md"
+packages = [{ include = "hse_demo_components", from = "src" }]
+
+[tool.poetry.dependencies]
+python = ">=3.12,<3.14"
+django = ">=4.2.26,<4.3"
+wagtail = ">=6.4,<6.5"
+
+[build-system]
+requires = ["poetry-core>=2.0,<3.0"]
+build-backend = "poetry.core.masonry.api"
