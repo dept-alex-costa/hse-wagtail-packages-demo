@@ -154,19 +154,19 @@ reproducible; consumers still need their own lockfiles.
 
 ## Installing a released demo module
 
-After this project has been published to the proposed repository
-`dept/hse-wagtail-packages-demo` and the initial tag has been released:
+Repository: `dept-alex-costa/hse-wagtail-packages-demo`. Once the tag in the
+example has been released:
 
 ```toml
 [tool.poetry.dependencies]
-hse-demo-component-lib = { git = "https://github.com/dept/hse-wagtail-packages-demo.git", tag = "wagtail6/component_lib-v1.0.0", subdirectory = "wagtail6/packages/component-lib" }
+hse-demo-component-lib = { git = "https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git", tag = "wagtail6/component_lib-v1.0.0", subdirectory = "wagtail6/packages/component-lib" }
 ```
 
 For the other line, select its tag **and** its matching subdirectory:
 
 ```toml
 [tool.poetry.dependencies]
-hse-demo-component-lib = { git = "https://github.com/dept/hse-wagtail-packages-demo.git", tag = "wagtail74/component_lib-v1.0.0", subdirectory = "wagtail74/packages/component-lib" }
+hse-demo-component-lib = { git = "https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git", tag = "wagtail74/component_lib-v1.0.0", subdirectory = "wagtail74/packages/component-lib" }
 ```
 
 These are alternative examples. Then run `poetry lock` and `poetry install` in
