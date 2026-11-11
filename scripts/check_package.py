@@ -50,7 +50,7 @@ def run(*command: str, cwd: Path, env: dict | None = None) -> None:
 
 
 def check(line: str, package: str) -> None:
-    folder = ROOT / package_path(line, package)
+    folder = ROOT / package_path(package)
     run("poetry", "check", "--lock", cwd=folder)
     run("poetry", "sync", "--no-interaction", cwd=folder)
     run("poetry", "run", "python", "-m", "pip", "check", cwd=folder)
