@@ -9,8 +9,8 @@ separate branches of one repository, with a version and release for every module
 
 | Branch | Package folder | Wagtail | Django | component_lib | important_redirects |
 | --- | --- | --- | --- | --- | --- |
-| `main` | `wagtail74/packages/` | 7.4.x | 5.2.x | 1.1.0 | 1.0.0 |
-| `legacy-main` | `wagtail6/packages/` | 6.4.x | 4.2.x | 1.0.1 | 1.0.0 |
+| `main` | `wagtail74/packages/` | 7.4.x | 5.2.x | 1.1.1 | 1.0.1 |
+| `legacy-main` | `wagtail6/packages/` | 6.4.x | 4.2.x | 1.0.2 | 1.0.1 |
 
 Use **Python 3.12** for the examples below. The packages accept Python
 `>=3.12,<3.14`; CI uses Python 3.12.
@@ -41,16 +41,16 @@ source .venv/bin/activate
 
 ```bash
 python -m pip install \
-  "hse-demo-component-lib @ git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail6/component_lib-v1.0.1#subdirectory=wagtail6/packages/component-lib" \
-  "hse-demo-important-redirects @ git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail6/important_redirects-v1.0.0#subdirectory=wagtail6/packages/important-redirects"
+  "hse-demo-component-lib @ git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail6/component_lib-v1.0.2#subdirectory=wagtail6/packages/component-lib" \
+  "hse-demo-important-redirects @ git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail6/important_redirects-v1.0.1#subdirectory=wagtail6/packages/important-redirects"
 ```
 
 **Wagtail 7.4 / Django 5.2:**
 
 ```bash
 python -m pip install \
-  "hse-demo-component-lib @ git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail74/component_lib-v1.1.0#subdirectory=wagtail74/packages/component-lib" \
-  "hse-demo-important-redirects @ git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail74/important_redirects-v1.0.0#subdirectory=wagtail74/packages/important-redirects"
+  "hse-demo-component-lib @ git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail74/component_lib-v1.1.1#subdirectory=wagtail74/packages/component-lib" \
+  "hse-demo-important-redirects @ git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail74/important_redirects-v1.0.1#subdirectory=wagtail74/packages/important-redirects"
 ```
 
 Keep only the package you need if you do not want both. These commands also
@@ -72,24 +72,25 @@ poetry env use python3.12
 
 ```bash
 poetry add \
-  "git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail6/component_lib-v1.0.1#subdirectory=wagtail6/packages/component-lib" \
-  "git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail6/important_redirects-v1.0.0#subdirectory=wagtail6/packages/important-redirects"
+  "git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail6/component_lib-v1.0.2#subdirectory=wagtail6/packages/component-lib" \
+  "git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail6/important_redirects-v1.0.1#subdirectory=wagtail6/packages/important-redirects"
 ```
 
 **Wagtail 7.4 / Django 5.2:**
 
 ```bash
 poetry add \
-  "git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail74/component_lib-v1.1.0#subdirectory=wagtail74/packages/component-lib" \
-  "git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail74/important_redirects-v1.0.0#subdirectory=wagtail74/packages/important-redirects"
+  "git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail74/component_lib-v1.1.1#subdirectory=wagtail74/packages/component-lib" \
+  "git+https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git@wagtail74/important_redirects-v1.0.1#subdirectory=wagtail74/packages/important-redirects"
 ```
 
 `poetry add` updates your project's `pyproject.toml` and `poetry.lock` and installs
 the packages. Commit both files. Use Poetry 2.2.1 to match this demo's tooling.
 
-**How the version is selected:** `@wagtail6/component_lib-v1.0.1` selects the
+**How the version is selected:** `@wagtail6/component_lib-v1.0.2` selects the
 release; `#subdirectory=wagtail6/packages/component-lib` selects the module.
-Use the tag and package folder for your Wagtail line.
+Use the tag and package folder for your Wagtail line. If your project pins an
+earlier demo tag, switch to the corresponding tag above and refresh your lockfile.
 
 **About locks:** Poetry uses the consuming project's lockfile. pip does not read
 `poetry.lock`. Neither installer adopts a dependency package's own lockfile;
@@ -110,13 +111,15 @@ those files make this repository's package checks reproducible.
 
 The Action validates and builds the selected module, commits any version bump
 to the selected branch and creates a **tag and GitHub Release** with a wheel
-and source archive. Tags follow `<line>/<module>-v<version>`.
+and source archive. Tags follow `<line>/<module>-v<version>`. The tag annotation
+and release notes list the module version, the locked Wagtail and Django
+versions, and the Python requirement.
 
 | Increment | Example |
 | --- | --- |
-| `patch` | `1.0.1` → `1.0.2` |
-| `minor` | `1.0.1` → `1.1.0` |
-| `major` | `1.0.1` → `2.0.0` |
+| `patch` | `1.0.2` → `1.0.3` |
+| `minor` | `1.0.2` → `1.1.0` |
+| `major` | `1.0.2` → `2.0.0` |
 | `current` | Releases the existing version if its tag does not exist yet |
 | `custom` | Uses a final `X.Y.Z` version greater than the current version |
 
@@ -124,7 +127,7 @@ Do not manually change an existing module's version in a feature PR: the
 release Action manages it. Existing tags are never overwritten.
 
 Each module in each branch has its own version. A `patch` release of
-`component_lib` from `legacy-main` creates `wagtail6/component_lib-v1.0.2`.
+`component_lib` from `legacy-main` creates `wagtail6/component_lib-v1.0.3`.
 
 ## Repository layout
 
