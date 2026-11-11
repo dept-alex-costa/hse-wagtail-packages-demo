@@ -11,7 +11,7 @@ import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BRANCH_RELEASES = {"main": ("wagtail74", 2), "legacy/wagtail-6-django-4": ("wagtail6", 1)}
+BRANCH_RELEASES = {"main": ("wagtail74", 2), "legacy-main": ("wagtail6", 1)}
 LINES = tuple(line for line, _ in BRANCH_RELEASES.values())
 PACKAGES = {
     "component_lib": "component-lib",
@@ -65,7 +65,7 @@ def read_metadata(path: Path) -> dict:
 
 def release_settings(branch: str) -> tuple[str, int]:
     if branch not in BRANCH_RELEASES:
-        raise ValueError("Choose main or legacy/wagtail-6-django-4 for a release or package check.")
+        raise ValueError("Choose main or legacy-main for a release or package check.")
     return BRANCH_RELEASES[branch]
 
 

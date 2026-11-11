@@ -10,7 +10,7 @@ separate branches of one repository, with a version and release for every module
 | Branch | Wagtail | Django | Release series | component_lib | important_redirects |
 | --- | --- | --- | --- | --- | --- |
 | `main` | 7.4.x | 5.2.x | `2.x.x` | 2.0.0 | 2.0.0 |
-| `legacy/wagtail-6-django-4` | 6.4.x | 4.2.x | `1.x.x` | 1.0.4 | 1.0.3 |
+| `legacy-main` | 6.4.x | 4.2.x | `1.x.x` | 1.0.4 | 1.0.3 |
 
 Use **Python 3.12** for the examples below. The packages accept Python
 `>=3.12,<3.14`; CI uses Python 3.12.
@@ -104,7 +104,7 @@ those files make this repository's package checks reproducible.
 
 ## 3. Create a new release
 
-1. Open and merge a PR into `main` for Wagtail 7.4 or `legacy/wagtail-6-django-4` for Wagtail 6.4.
+1. Open and merge a PR into `main` for Wagtail 7.4 or `legacy-main` for Wagtail 6.4.
 2. Open [Actions → Release package](https://github.com/dept-alex-costa/hse-wagtail-packages-demo/actions/workflows/release-package.yml).
 3. Click **Run workflow** and select the same branch. The branch determines the compatibility line and release series.
 4. Select the module and version increment.
@@ -132,7 +132,7 @@ Do not manually change an existing module's version in a feature PR: the
 release Action manages it. Existing tags are never overwritten.
 
 Each module in each branch has its own version. A `patch` release of
-`component_lib` from `legacy/wagtail-6-django-4` creates `component_lib-v1.0.5`.
+`component_lib` from `legacy-main` creates `component_lib-v1.0.5`.
 The Action checks that the version belongs to the selected branch’s series.
 
 ## Repository layout

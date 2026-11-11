@@ -12,7 +12,7 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 import release
 
-LEGACY = "legacy/wagtail-6-django-4"
+LEGACY = "legacy-main"
 
 
 class VersionTests(unittest.TestCase):
