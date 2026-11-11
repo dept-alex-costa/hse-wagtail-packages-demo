@@ -37,19 +37,19 @@ class RepositoryTests(unittest.TestCase):
         self.git("init", "-b", "main")
         self.git("config", "user.name", "Demo test")
         self.git("config", "user.email", "demo@example.com")
-        for line in release.LINES:
-            for package in release.PACKAGES:
-                folder = self.root / release.package_path(line, package)
-                folder.mkdir(parents=True)
-                (folder / "pyproject.toml").write_text(
-                    f'[tool.poetry]\nname = "{package}"\nversion = "1.0.0"\n\n'
-                    '[tool.poetry.dependencies]\npython = ">=3.12,<3.14"\n'
-                )
-                (folder / "poetry.lock").write_text(
-                    '[[package]]\nname = "wagtail"\nversion = "6.4.2"\n\n'
-                    '[[package]]\nname = "django"\nversion = "4.2.30"\n'
-                )
+        for package in release.PACKAGES:
+            folder = self.root / release.package_path(package)
+            folder.mkdir(parents=True)
+            (folder / "pyproject.toml").write_text(
+                f'[tool.poetry]\nname = "{package}"\nversion = "1.0.0"\n\n'
+                '[tool.poetry.dependencies]\npython = ">=3.12,<3.14"\n'
+            )
+            (folder / "poetry.lock").write_text(
+                '[[package]]\nname = "wagtail"\nversion = "6.4.2"\n\n'
+                '[[package]]\nname = "django"\nversion = "4.2.30"\n'
+            )
         self.commit("Initial demo")
+        self.git("branch", "legacy-main")
 
     def tearDown(self):
         self.root_patch.stop()
@@ -66,6 +66,7 @@ class RepositoryTests(unittest.TestCase):
         self.git("commit", "-m", message)
 
     def test_releasing_one_module_leaves_other_line_and_module_unchanged(self):
+        self.git("switch", "legacy-main")
         snapshots = {p: p.read_bytes() for p in self.root.rglob("pyproject.toml")}
         plan = release.make_plan("legacy-main", "component_lib", "minor")
         selected = self.root / plan["path"] / "pyproject.toml"
@@ -77,6 +78,7 @@ class RepositoryTests(unittest.TestCase):
         for path, content in snapshots.items():
             if path != selected:
                 self.assertEqual(path.read_bytes(), content)
+        self.git("switch", "main")
         other = release.make_plan("main", "component_lib", "patch")
         self.assertEqual(other["current"], "1.0.0")
         self.assertEqual(other["tag"], "wagtail74/component_lib-v1.0.1")
@@ -91,21 +93,22 @@ class RepositoryTests(unittest.TestCase):
         )
 
     def test_changelog_only_uses_selected_line_and_module(self):
+        self.git("switch", "legacy-main")
         self.git("tag", "wagtail6/component_lib-v1.0.0")
         self.git("tag", "wagtail74/component_lib-v99.0.0")
         self.git("tag", "wagtail6/important_redirects-v99.0.0")
-        selected = self.root / release.package_path("wagtail6", "component_lib")
+        selected = self.root / release.package_path("component_lib")
         (selected / "README.md").write_text("Selected module change")
         self.commit("Selected module change")
-        other = self.root / release.package_path("wagtail74", "component_lib")
-        (other / "README.md").write_text("Other line change")
-        self.commit("Other line change")
+        other = self.root / release.package_path("important_redirects")
+        (other / "README.md").write_text("Other module change")
+        self.commit("Other module change")
         plan = release.make_plan("legacy-main", "component_lib", "patch")
         notes = self.root / ".release" / "notes.md"
         release.write_notes(plan, notes)
         text = notes.read_text()
         self.assertIn("Selected module change", text)
-        self.assertNotIn("Other line change", text)
+        self.assertNotIn("Other module change", text)
         self.assertIn("wagtail6/component_lib-v1.0.0", text)
         self.assertIn("Source branch: `legacy-main`", text)
         self.assertIn("Module: `1.0.1`", text)
@@ -117,11 +120,22 @@ class RepositoryTests(unittest.TestCase):
 
     def test_manual_pr_version_changes_are_rejected(self):
         base = self.git("rev-parse", "HEAD")
-        self.git("rm", "-r", "wagtail6")
         release.check_pr_versions(base, "main")
-        selected = self.root / release.package_path("wagtail74", "important_redirects") / "pyproject.toml"
+        selected = self.root / release.package_path("important_redirects") / "pyproject.toml"
         release.set_package_version(selected, "2.0.0")
-        with self.assertRaisesRegex(ValueError, "wagtail74/packages/important-redirects"):
+        with self.assertRaisesRegex(ValueError, "packages/important-redirects"):
+            release.check_pr_versions(base, "main")
+
+    def test_version_check_follows_package_moved_to_root(self):
+        (self.root / "wagtail74").mkdir()
+        self.git("mv", "packages", "wagtail74/packages")
+        self.commit("Old package layout")
+        base = self.git("rev-parse", "HEAD")
+        self.git("mv", "wagtail74/packages", "packages")
+        release.check_pr_versions(base, "main")
+        manifest = self.root / release.package_path("component_lib") / "pyproject.toml"
+        release.set_package_version(manifest, "2.0.0")
+        with self.assertRaisesRegex(ValueError, "packages/component-lib"):
             release.check_pr_versions(base, "main")
 
     def test_invalid_branch_or_module_is_rejected(self):
@@ -135,9 +149,10 @@ class RepositoryTests(unittest.TestCase):
         (scripts / "release.py").write_bytes((SCRIPTS / "release.py").read_bytes())
         args = [sys.executable, str(scripts / "release.py"), "plan", "--branch", "main",
                 "--package", "important_redirects", "--bump", "patch"]
-        before = self.git("diff", "--", "wagtail74")
+        before = self.git("diff", "--", "packages")
         plan = json.loads(subprocess.check_output(args, cwd=self.root, text=True))
-        self.assertEqual(self.git("diff", "--", "wagtail74"), before)
+        self.assertEqual(plan["path"], "packages/important-redirects")
+        self.assertEqual(self.git("diff", "--", "packages"), before)
         output = self.root / ".release-output"
         args[2] = "prepare"
         subprocess.check_output(args + ["--github-output", str(output)], cwd=self.root, text=True)

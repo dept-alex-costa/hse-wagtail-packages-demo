@@ -53,10 +53,10 @@ def next_version(current: str, bump: str, custom: str = "") -> str:
     return result
 
 
-def package_path(line: str, package: str) -> Path:
-    if line not in LINES or package not in PACKAGES:
-        raise ValueError("Unknown compatibility line or package.")
-    return Path(line) / "packages" / PACKAGES[package]
+def package_path(package: str) -> Path:
+    if package not in PACKAGES:
+        raise ValueError("Unknown package.")
+    return Path("packages") / PACKAGES[package]
 
 
 def read_metadata(path: Path) -> dict:
@@ -71,7 +71,7 @@ def line_for_branch(branch: str) -> str:
 
 def make_plan(branch: str, package: str, bump: str, custom: str = "") -> dict:
     line = line_for_branch(branch)
-    relative = package_path(line, package)
+    relative = package_path(package)
     current = read_metadata(ROOT / relative / "pyproject.toml")["version"]
     release = next_version(current, bump, custom.strip())
     tag = f"{line}/{package}-v{release}"
@@ -160,14 +160,20 @@ def check_pr_versions(base: str, branch: str) -> None:
     git("rev-parse", "--verify", f"{base}^{{commit}}")
     failures = []
     for package in PACKAGES:
-        path = (package_path(line, package) / "pyproject.toml").as_posix()
+        path = (package_path(package) / "pyproject.toml").as_posix()
         result = subprocess.run(
             ["git", "show", f"{base}:{path}"],
             cwd=ROOT, text=True, capture_output=True,
         )
         if result.returncode:
-            # New packages can declare their initial version in the PR.
-            continue
+            # Compare against the old path when a PR moves a package to the root.
+            result = subprocess.run(
+                ["git", "show", f"{base}:{line}/{path}"],
+                cwd=ROOT, text=True, capture_output=True,
+            )
+            if result.returncode:
+                # New packages can declare their initial version in the PR.
+                continue
         old = tomllib.loads(result.stdout)["tool"]["poetry"]["version"]
         new = read_metadata(ROOT / path)["version"]
         if old != new:
