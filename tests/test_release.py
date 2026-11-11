@@ -45,7 +45,10 @@ class RepositoryTests(unittest.TestCase):
                     f'[tool.poetry]\nname = "{package}"\nversion = "1.0.0"\n\n'
                     '[tool.poetry.dependencies]\npython = ">=3.12,<3.14"\n'
                 )
-                (folder / "poetry.lock").write_text("# unchanged test fixture\n")
+                (folder / "poetry.lock").write_text(
+                    '[[package]]\nname = "wagtail"\nversion = "6.4.2"\n\n'
+                    '[[package]]\nname = "django"\nversion = "4.2.30"\n'
+                )
         self.commit("Initial demo")
 
     def tearDown(self):
@@ -105,6 +108,10 @@ class RepositoryTests(unittest.TestCase):
         self.assertNotIn("Other line change", text)
         self.assertIn("wagtail6/component_lib-v1.0.0", text)
         self.assertIn("Source branch: `legacy-main`", text)
+        self.assertIn("Module: `1.0.1`", text)
+        self.assertIn("Wagtail: `6.4.2`", text)
+        self.assertIn("Django: `4.2.30`", text)
+        self.assertIn("Python requirement: `>=3.12,<3.14`", text)
         self.assertNotIn("99.0.0", text)
         self.assertIn(self.git("rev-parse", "HEAD"), text)
 

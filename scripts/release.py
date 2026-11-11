@@ -122,6 +122,10 @@ def previous_tag(plan: dict) -> str | None:
 
 
 def write_notes(plan: dict, output: Path) -> None:
+    package_dir = ROOT / plan["path"]
+    metadata = read_metadata(package_dir / "pyproject.toml")
+    lock = tomllib.loads((package_dir / "poetry.lock").read_text())
+    locked_versions = {package["name"].lower(): package["version"] for package in lock["package"]}
     previous = previous_tag(plan)
     revision_range = f"{previous}..HEAD" if previous else "HEAD"
     commits = git("log", "--format=- %h %s", revision_range, "--", plan["path"])
@@ -138,6 +142,11 @@ def write_notes(plan: dict, output: Path) -> None:
         f"- Source branch: `{plan['branch']}`\n"
         f"- Source commit: `{git('rev-parse', 'HEAD')}`\n"
         f"- Previous release: `{previous or 'first release'}`\n\n"
+        "## Versions\n\n"
+        f"- Module: `{plan['version']}`\n"
+        f"- Wagtail: `{locked_versions['wagtail']}`\n"
+        f"- Django: `{locked_versions['django']}`\n"
+        f"- Python requirement: `{metadata['dependencies']['python']}`\n\n"
         "## Package changes\n\n"
         f"{commits or '- No package-scoped commits.'}\n\n"
         "## Package files\n\n"
