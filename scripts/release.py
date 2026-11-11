@@ -11,8 +11,8 @@ import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BRANCH_LINES = {"main": "wagtail74", "legacy-main": "wagtail6"}
-LINES = tuple(BRANCH_LINES.values())
+BRANCH_RELEASES = {"main": ("wagtail74", 2), "legacy/wagtail-6-django-4": ("wagtail6", 1)}
+LINES = tuple(line for line, _ in BRANCH_RELEASES.values())
 PACKAGES = {
     "component_lib": "component-lib",
     "important_redirects": "important-redirects",
@@ -63,18 +63,20 @@ def read_metadata(path: Path) -> dict:
     return tomllib.loads(path.read_text())["tool"]["poetry"]
 
 
-def line_for_branch(branch: str) -> str:
-    if branch not in BRANCH_LINES:
-        raise ValueError("Choose main or legacy-main for a release or package check.")
-    return BRANCH_LINES[branch]
+def release_settings(branch: str) -> tuple[str, int]:
+    if branch not in BRANCH_RELEASES:
+        raise ValueError("Choose main or legacy/wagtail-6-django-4 for a release or package check.")
+    return BRANCH_RELEASES[branch]
 
 
 def make_plan(branch: str, package: str, bump: str, custom: str = "") -> dict:
-    line = line_for_branch(branch)
+    line, major = release_settings(branch)
     relative = package_path(package)
     current = read_metadata(ROOT / relative / "pyproject.toml")["version"]
     release = next_version(current, bump, custom.strip())
-    tag = f"{line}/{package}-v{release}"
+    if version_tuple(release)[0] != major:
+        raise ValueError(f"{branch} releases must use {major}.x.x. Requested {release}.")
+    tag = f"{package}-v{release}"
     existing = git("tag", "--list", tag)
     if existing:
         raise ValueError(f"Tag {tag} already exists; choose a new version.")
@@ -112,9 +114,10 @@ def set_package_version(path: Path, version: str) -> None:
 
 
 def previous_tag(plan: dict) -> str | None:
-    prefix = f"{plan['line']}/{plan['package']}-v"
+    prefix = f"{plan['package']}-v"
+    major = version_tuple(plan['version'])[0]
     candidates = []
-    for tag in git("tag", "--list", f"{prefix}*", "--merged", "HEAD").splitlines():
+    for tag in git("tag", "--list", f"{prefix}{major}.*", "--merged", "HEAD").splitlines():
         suffix = tag.removeprefix(prefix)
         if VERSION.fullmatch(suffix) and tag != plan["tag"]:
             candidates.append((version_tuple(suffix), tag))
@@ -156,7 +159,7 @@ def write_notes(plan: dict, output: Path) -> None:
 
 
 def check_pr_versions(base: str, branch: str) -> None:
-    line = line_for_branch(branch)
+    line, _ = release_settings(branch)
     git("rev-parse", "--verify", f"{base}^{{commit}}")
     failures = []
     for package in PACKAGES:
@@ -190,7 +193,7 @@ def main() -> None:
     commands = parser.add_subparsers(dest="command", required=True)
     for command in ("plan", "prepare"):
         child = commands.add_parser(command)
-        child.add_argument("--branch", choices=BRANCH_LINES, required=True)
+        child.add_argument("--branch", choices=BRANCH_RELEASES, required=True)
         child.add_argument("--package", choices=PACKAGES, required=True)
         child.add_argument("--bump", choices=("current", "patch", "minor", "major", "custom"), required=True)
         child.add_argument("--custom-version", default="")
@@ -201,15 +204,15 @@ def main() -> None:
     notes.add_argument("--output", type=Path, required=True)
     check = commands.add_parser("check-pr")
     check.add_argument("--base", required=True)
-    check.add_argument("--branch", choices=BRANCH_LINES, required=True)
+    check.add_argument("--branch", choices=BRANCH_RELEASES, required=True)
     line = commands.add_parser("line-for-branch")
-    line.add_argument("--branch", choices=BRANCH_LINES, required=True)
+    line.add_argument("--branch", choices=BRANCH_RELEASES, required=True)
     args = parser.parse_args()
     if args.command == "check-pr":
         check_pr_versions(args.base, args.branch)
         return
     if args.command == "line-for-branch":
-        print(line_for_branch(args.branch))
+        print(release_settings(args.branch)[0])
         return
     if args.command == "notes":
         write_notes(json.loads(args.plan_file.read_text()), args.output)
