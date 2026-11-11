@@ -13,10 +13,13 @@ export PATH="/tmp/hse-demo-tools/bin:$PATH"
 export POETRY_VIRTUALENVS_IN_PROJECT=true
 
 python -m unittest discover -s tests -v
-python scripts/check_package.py --line wagtail6 --package component_lib
-python scripts/check_package.py --line wagtail6 --package important_redirects
+```
+
+On `main`, use `--line wagtail74`. On `legacy-main`, use `--line wagtail6`.
+Run the command once for `component_lib` and once for `important_redirects`.
+
+```bash
 python scripts/check_package.py --line wagtail74 --package component_lib
-python scripts/check_package.py --line wagtail74 --package important_redirects
 ```
 
 Each package check validates its lock, synchronises its environment, runs
@@ -29,7 +32,7 @@ Inspect a proposed release locally without changing a version or creating a tag:
 
 ```bash
 python scripts/release.py plan \
-  --line wagtail6 --package component_lib --bump patch
+  --branch main --package component_lib --bump patch
 ```
 
 When changing dependencies, run `poetry lock` inside the selected module and
@@ -47,11 +50,11 @@ not activate.
 The release job uses the repository's `GITHUB_TOKEN` with `contents: write`;
 it does not need a PAT or publish to PyPI. Repository/organisation settings and
 rulesets must permit that workflow to push its version-bump commit and tags.
-If direct pushes to `main` are prohibited, the release process needs to be
+If direct pushes to the release branch are prohibited, the release process needs to be
 adapted to a version-bump PR; do not disable the ruleset to make the demo run.
 
-To require CI before merging, configure the `Release controls` check and all
-four `Package checks (...)` checks as required checks for `main`.
+To require CI before merging, configure `Release controls` and the two package
+checks for the corresponding Wagtail line on each branch.
 
 ## Reference
 
@@ -65,9 +68,9 @@ If the tag was pushed but GitHub Release creation failed, inspect the run and
 create the missing Release against the existing tag, attaching the matching
 artifacts. Do not move the tag or increment the version just to recover it.
 
-The workflow pushes the version commit and tag atomically. A concurrent change
-to main makes the push fail instead of overwriting it. Release notes only
-include changes for the selected module in the selected compatibility line.
+The workflow pushes the version commit to the selected branch and its tag in
+one atomic operation. Git rejects a push when that branch has advanced beyond
+the release commit. Release notes include changes for the selected module and line.
 
 The release job builds and publishes in one workflow because tags pushed with
 GITHUB_TOKEN normally do not trigger another workflow. See

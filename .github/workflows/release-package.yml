@@ -1,16 +1,11 @@
 name: Release package
-run-name: Release ${{ inputs.line }} / ${{ inputs.package }} (${{ inputs.bump }})
+run-name: Release ${{ github.ref_name }} / ${{ inputs.package }} (${{ inputs.bump }})
 
 on:
   workflow_dispatch:
     inputs:
-      line:
-        description: Compatibility line (does not change Wagtail or Django versions)
-        required: true
-        type: choice
-        options: [wagtail6, wagtail74]
       package:
-        description: Module to release within the selected line
+        description: Module to release from the selected branch
         required: true
         type: choice
         options: [component_lib, important_redirects]
@@ -27,9 +22,9 @@ on:
 permissions:
   contents: write
 
-# Every release writes main, even when the line/module differs.
+# Releases for different modules can write the same branch.
 concurrency:
-  group: package-release-main
+  group: package-release-${{ github.ref }}
   cancel-in-progress: false
 
 env:
@@ -39,20 +34,20 @@ env:
 
 jobs:
   release:
-    name: Release ${{ inputs.line }} / ${{ inputs.package }}
+    name: Release ${{ github.ref_name }} / ${{ inputs.package }}
     runs-on: ubuntu-latest
     steps:
-      - name: Require main for final releases
+      - name: Require a release branch
         env:
           SOURCE_REF: ${{ github.ref }}
         run: |
-          if [ "$SOURCE_REF" != 'refs/heads/main' ]; then
-            echo 'Final releases must run from main.' >&2
+          if [ "$SOURCE_REF" != 'refs/heads/main' ] && [ "$SOURCE_REF" != 'refs/heads/legacy-main' ]; then
+            echo 'Final releases must run from main or legacy-main.' >&2
             exit 1
           fi
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.ref }}
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
@@ -61,21 +56,21 @@ jobs:
         run: pipx install "poetry==$POETRY_VERSION"
       - name: Validate release controls
         run: python -m unittest discover -s tests -v
-      - name: Resolve line, module, version and tag
+      - name: Resolve branch, module, version and tag
         id: package
         env:
-          LINE: ${{ inputs.line }}
+          BRANCH: ${{ github.ref_name }}
           PACKAGE: ${{ inputs.package }}
           BUMP: ${{ inputs.bump }}
           CUSTOM_VERSION: ${{ inputs.custom_version }}
         run: |
           python scripts/release.py prepare \
-            --line "$LINE" --package "$PACKAGE" --bump "$BUMP" \
+            --branch "$BRANCH" --package "$PACKAGE" --bump "$BUMP" \
             --custom-version "$CUSTOM_VERSION" \
             --github-output "$GITHUB_OUTPUT" --plan-file .release/plan.json
       - name: Validate selected package and build release artifacts
         env:
-          LINE: ${{ inputs.line }}
+          LINE: ${{ steps.package.outputs.line }}
           PACKAGE: ${{ inputs.package }}
         run: python scripts/check_package.py --line "$LINE" --package "$PACKAGE"
       - name: Commit selected module's version bump
@@ -92,12 +87,13 @@ jobs:
         run: python scripts/release.py notes --plan-file .release/plan.json --output .release/notes.md
       - name: Push version commit and tag atomically
         env:
+          BRANCH: ${{ steps.package.outputs.branch }}
           TAG: ${{ steps.package.outputs.tag }}
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git tag -a "$TAG" -m "Release $TAG"
-          git push --atomic origin HEAD:refs/heads/main "refs/tags/$TAG"
+          git push --atomic origin "HEAD:refs/heads/$BRANCH" "refs/tags/$TAG"
       - name: Create GitHub Release with wheel and source archive
         env:
           GH_TOKEN: ${{ github.token }}
@@ -108,6 +104,7 @@ jobs:
             --verify-tag --latest=false --title "$TAG" --notes-file .release/notes.md
       - name: Summarise release
         env:
+          BRANCH: ${{ steps.package.outputs.branch }}
           TAG: ${{ steps.package.outputs.tag }}
           PACKAGE_PATH: ${{ steps.package.outputs.path }}
           VERSION: ${{ steps.package.outputs.version }}
@@ -115,8 +112,7 @@ jobs:
           {
             echo "### Released $TAG"
             echo
+            echo "- Branch: \`$BRANCH\`"
             echo "- Module: \`$PACKAGE_PATH\`"
             echo "- Version: \`$VERSION\`"
-            echo '- Other compatibility lines and modules were not versioned.'
           } >> "$GITHUB_STEP_SUMMARY"
-

@@ -11,7 +11,8 @@ import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-LINES = ("wagtail6", "wagtail74")
+BRANCH_LINES = {"main": "wagtail74", "legacy-main": "wagtail6"}
+LINES = tuple(BRANCH_LINES.values())
 PACKAGES = {
     "component_lib": "component-lib",
     "important_redirects": "important-redirects",
@@ -62,7 +63,14 @@ def read_metadata(path: Path) -> dict:
     return tomllib.loads(path.read_text())["tool"]["poetry"]
 
 
-def make_plan(line: str, package: str, bump: str, custom: str = "") -> dict:
+def line_for_branch(branch: str) -> str:
+    if branch not in BRANCH_LINES:
+        raise ValueError("Choose main or legacy-main for a release or package check.")
+    return BRANCH_LINES[branch]
+
+
+def make_plan(branch: str, package: str, bump: str, custom: str = "") -> dict:
+    line = line_for_branch(branch)
     relative = package_path(line, package)
     current = read_metadata(ROOT / relative / "pyproject.toml")["version"]
     release = next_version(current, bump, custom.strip())
@@ -71,6 +79,7 @@ def make_plan(line: str, package: str, bump: str, custom: str = "") -> dict:
     if existing:
         raise ValueError(f"Tag {tag} already exists; choose a new version.")
     return {
+        "branch": branch,
         "line": line,
         "package": package,
         "path": relative.as_posix(),
@@ -126,7 +135,7 @@ def write_notes(plan: dict, output: Path) -> None:
         f"# {plan['line']} / {plan['package']} {plan['version']}\n\n"
         f"- Tag: `{plan['tag']}`\n"
         f"- Package path: `{plan['path']}`\n"
-        f"- Source branch: `main`\n"
+        f"- Source branch: `{plan['branch']}`\n"
         f"- Source commit: `{git('rev-parse', 'HEAD')}`\n"
         f"- Previous release: `{previous or 'first release'}`\n\n"
         "## Package changes\n\n"
@@ -137,23 +146,23 @@ def write_notes(plan: dict, output: Path) -> None:
     )
 
 
-def check_pr_versions(base: str) -> None:
+def check_pr_versions(base: str, branch: str) -> None:
+    line = line_for_branch(branch)
     git("rev-parse", "--verify", f"{base}^{{commit}}")
     failures = []
-    for line in LINES:
-        for package in PACKAGES:
-            path = (package_path(line, package) / "pyproject.toml").as_posix()
-            result = subprocess.run(
-                ["git", "show", f"{base}:{path}"],
-                cwd=ROOT, text=True, capture_output=True,
-            )
-            if result.returncode:
-                # New packages can declare their initial version in the PR.
-                continue
-            old = tomllib.loads(result.stdout)["tool"]["poetry"]["version"]
-            new = read_metadata(ROOT / path)["version"]
-            if old != new:
-                failures.append(f"{path}: {old} -> {new}")
+    for package in PACKAGES:
+        path = (package_path(line, package) / "pyproject.toml").as_posix()
+        result = subprocess.run(
+            ["git", "show", f"{base}:{path}"],
+            cwd=ROOT, text=True, capture_output=True,
+        )
+        if result.returncode:
+            # New packages can declare their initial version in the PR.
+            continue
+        old = tomllib.loads(result.stdout)["tool"]["poetry"]["version"]
+        new = read_metadata(ROOT / path)["version"]
+        if old != new:
+            failures.append(f"{path}: {old} -> {new}")
     if failures:
         raise ValueError(
             "Versions are managed by Release package. Revert manual version changes:\n"
@@ -166,7 +175,7 @@ def main() -> None:
     commands = parser.add_subparsers(dest="command", required=True)
     for command in ("plan", "prepare"):
         child = commands.add_parser(command)
-        child.add_argument("--line", choices=LINES, required=True)
+        child.add_argument("--branch", choices=BRANCH_LINES, required=True)
         child.add_argument("--package", choices=PACKAGES, required=True)
         child.add_argument("--bump", choices=("current", "patch", "minor", "major", "custom"), required=True)
         child.add_argument("--custom-version", default="")
@@ -177,14 +186,20 @@ def main() -> None:
     notes.add_argument("--output", type=Path, required=True)
     check = commands.add_parser("check-pr")
     check.add_argument("--base", required=True)
+    check.add_argument("--branch", choices=BRANCH_LINES, required=True)
+    line = commands.add_parser("line-for-branch")
+    line.add_argument("--branch", choices=BRANCH_LINES, required=True)
     args = parser.parse_args()
     if args.command == "check-pr":
-        check_pr_versions(args.base)
+        check_pr_versions(args.base, args.branch)
+        return
+    if args.command == "line-for-branch":
+        print(line_for_branch(args.branch))
         return
     if args.command == "notes":
         write_notes(json.loads(args.plan_file.read_text()), args.output)
         return
-    plan = make_plan(args.line, args.package, args.bump, args.custom_version)
+    plan = make_plan(args.branch, args.package, args.bump, args.custom_version)
     if args.command == "prepare" and plan["changed"] == "true":
         set_package_version(ROOT / plan["path"] / "pyproject.toml", plan["version"])
     if args.github_output:
@@ -203,4 +218,3 @@ if __name__ == "__main__":
     except (ValueError, KeyError, subprocess.CalledProcessError) as error:
         print(f"Release error: {error}", file=sys.stderr)
         sys.exit(1)
-

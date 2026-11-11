@@ -64,7 +64,7 @@ class RepositoryTests(unittest.TestCase):
 
     def test_releasing_one_module_leaves_other_line_and_module_unchanged(self):
         snapshots = {p: p.read_bytes() for p in self.root.rglob("pyproject.toml")}
-        plan = release.make_plan("wagtail6", "component_lib", "minor")
+        plan = release.make_plan("legacy-main", "component_lib", "minor")
         selected = self.root / plan["path"] / "pyproject.toml"
         release.set_package_version(selected, plan["version"])
         self.assertEqual(release.read_metadata(selected)["version"], "1.1.0")
@@ -74,16 +74,16 @@ class RepositoryTests(unittest.TestCase):
         for path, content in snapshots.items():
             if path != selected:
                 self.assertEqual(path.read_bytes(), content)
-        other = release.make_plan("wagtail74", "component_lib", "patch")
+        other = release.make_plan("main", "component_lib", "patch")
         self.assertEqual(other["current"], "1.0.0")
         self.assertEqual(other["tag"], "wagtail74/component_lib-v1.0.1")
 
     def test_duplicate_tag_is_rejected_but_same_version_in_other_line_is_allowed(self):
         self.git("tag", "wagtail6/component_lib-v1.0.0")
         with self.assertRaisesRegex(ValueError, "already exists"):
-            release.make_plan("wagtail6", "component_lib", "current")
+            release.make_plan("legacy-main", "component_lib", "current")
         self.assertEqual(
-            release.make_plan("wagtail74", "component_lib", "current")["tag"],
+            release.make_plan("main", "component_lib", "current")["tag"],
             "wagtail74/component_lib-v1.0.0",
         )
 
@@ -97,34 +97,36 @@ class RepositoryTests(unittest.TestCase):
         other = self.root / release.package_path("wagtail74", "component_lib")
         (other / "README.md").write_text("Other line change")
         self.commit("Other line change")
-        plan = release.make_plan("wagtail6", "component_lib", "patch")
+        plan = release.make_plan("legacy-main", "component_lib", "patch")
         notes = self.root / ".release" / "notes.md"
         release.write_notes(plan, notes)
         text = notes.read_text()
         self.assertIn("Selected module change", text)
         self.assertNotIn("Other line change", text)
         self.assertIn("wagtail6/component_lib-v1.0.0", text)
+        self.assertIn("Source branch: `legacy-main`", text)
         self.assertNotIn("99.0.0", text)
         self.assertIn(self.git("rev-parse", "HEAD"), text)
 
     def test_manual_pr_version_changes_are_rejected(self):
         base = self.git("rev-parse", "HEAD")
-        release.check_pr_versions(base)
+        self.git("rm", "-r", "wagtail6")
+        release.check_pr_versions(base, "main")
         selected = self.root / release.package_path("wagtail74", "important_redirects") / "pyproject.toml"
         release.set_package_version(selected, "2.0.0")
         with self.assertRaisesRegex(ValueError, "wagtail74/packages/important-redirects"):
-            release.check_pr_versions(base)
+            release.check_pr_versions(base, "main")
 
-    def test_invalid_line_or_module_cannot_escape_package_roots(self):
-        for line, package in (("../wagtail6", "component_lib"), ("wagtail6", "../../other")):
-            with self.subTest(line=line, package=package), self.assertRaises(ValueError):
-                release.make_plan(line, package, "patch")
+    def test_invalid_branch_or_module_is_rejected(self):
+        for branch, package in (("feature", "component_lib"), ("legacy-main", "../../other")):
+            with self.subTest(branch=branch, package=package), self.assertRaises(ValueError):
+                release.make_plan(branch, package, "patch")
 
     def test_cli_plan_is_read_only_and_prepare_only_updates_selected_module(self):
         scripts = self.root / "scripts"
         scripts.mkdir()
         (scripts / "release.py").write_bytes((SCRIPTS / "release.py").read_bytes())
-        args = [sys.executable, str(scripts / "release.py"), "plan", "--line", "wagtail74",
+        args = [sys.executable, str(scripts / "release.py"), "plan", "--branch", "main",
                 "--package", "important_redirects", "--bump", "patch"]
         before = self.git("diff", "--", "wagtail74")
         plan = json.loads(subprocess.check_output(args, cwd=self.root, text=True))
@@ -136,8 +138,8 @@ class RepositoryTests(unittest.TestCase):
         self.assertEqual(changed, [plan["path"] + "/pyproject.toml"])
         self.assertEqual(release.read_metadata(self.root / plan["path"] / "pyproject.toml")["version"], "1.0.1")
         self.assertIn("tag=wagtail74/important_redirects-v1.0.1", output.read_text())
+        self.assertIn("branch=main", output.read_text())
 
 
 if __name__ == "__main__":
     unittest.main()
-
