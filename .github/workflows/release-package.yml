@@ -13,7 +13,7 @@ on:
         description: Increment the selected module's own version
         required: true
         type: choice
-        options: [current, patch, minor, major, custom]
+        options: [current, patch, minor, custom]
       custom_version:
         description: Required for custom only, for example 2.3.1
         required: false
@@ -41,8 +41,8 @@ jobs:
         env:
           SOURCE_REF: ${{ github.ref }}
         run: |
-          if [ "$SOURCE_REF" != 'refs/heads/main' ] && [ "$SOURCE_REF" != 'refs/heads/legacy-main' ]; then
-            echo 'Final releases must run from main or legacy-main.' >&2
+          if [ "$SOURCE_REF" != 'refs/heads/main' ] && [ "$SOURCE_REF" != 'refs/heads/legacy/wagtail-6-django-4' ]; then
+            echo 'Final releases must run from main or legacy/wagtail-6-django-4.' >&2
             exit 1
           fi
       - uses: actions/checkout@v4

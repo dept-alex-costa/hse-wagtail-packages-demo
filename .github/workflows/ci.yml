@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, legacy-main]
+    branches: [main, legacy/wagtail-6-django-4]
   push:
-    branches: [main, legacy-main]
+    branches: [main, legacy/wagtail-6-django-4]
   workflow_dispatch:
 
 permissions:

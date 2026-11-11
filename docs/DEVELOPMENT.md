@@ -15,7 +15,7 @@ export POETRY_VIRTUALENVS_IN_PROJECT=true
 python -m unittest discover -s tests -v
 ```
 
-On `main`, use `--line wagtail74`. On `legacy-main`, use `--line wagtail6`.
+On `main`, use `--line wagtail74`. On `legacy/wagtail-6-django-4`, use `--line wagtail6`.
 Run the command once for `component_lib` and once for `important_redirects`.
 
 ```bash
@@ -71,6 +71,11 @@ artifacts. Do not move the tag or increment the version just to recover it.
 The workflow pushes the version commit to the selected branch and its tag in
 one atomic operation. Git rejects a push when that branch has advanced beyond
 the release commit. Release notes include changes for the selected module and line.
+
+`main` releases use `2.x.x`. `legacy/wagtail-6-django-4` releases use `1.x.x`.
+The Action validates that series before creating a commit or a tag. Its tags use
+`<package_name>-v<version>` and the changelog searches for the preceding tag in
+the same package and major series.
 
 The release job builds and publishes in one workflow because tags pushed with
 GITHUB_TOKEN normally do not trigger another workflow. See
