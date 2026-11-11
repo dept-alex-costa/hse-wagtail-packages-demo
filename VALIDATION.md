@@ -36,9 +36,13 @@ The local simulation left the four scaffold versions at `1.0.0`. Tags/commits
 created by those local tests exist only in disposable repositories. The real
 GitHub releases below subsequently advanced the selected module versions.
 
-## GitHub validation
+## Initial GitHub validation
 
 Repository: [dept-alex-costa/hse-wagtail-packages-demo](https://github.com/dept-alex-costa/hse-wagtail-packages-demo).
+
+The runs below document the original demo releases. The [README](README.md)
+and [Releases](https://github.com/dept-alex-costa/hse-wagtail-packages-demo/releases)
+list the current package tags for `main` and `legacy-main`.
 
 The [initial CI run](https://github.com/dept-alex-costa/hse-wagtail-packages-demo/actions/runs/42791991384)
 passed the release controls and all four package checks on GitHub-hosted runners.
