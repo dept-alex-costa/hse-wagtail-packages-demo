@@ -1,7 +1,8 @@
-# Wagtail packages: two lines, independent releases
+# Wagtail package release strategy
 
-A small demo showing how to keep **Wagtail 6** and **Wagtail 7.4** packages in
-separate branches of one repository, with a version and release for every module.
+One repository with a shared `packages/` layout and separate release series.
+`legacy-main` carries Wagtail 6 and Django 4 releases in `1.x.x`. `main` carries
+Wagtail 7 and Django 5 releases in `2.x.x`.
 
 [Releases](https://github.com/dept-alex-costa/hse-wagtail-packages-demo/releases) · [GitHub Actions](https://github.com/dept-alex-costa/hse-wagtail-packages-demo/actions) · [Validation results](VALIDATION.md)
 
@@ -91,11 +92,18 @@ The tag selects an exact release commit. `#subdirectory=packages/component-lib`
 selects the module within that commit. Choose a tag in the major series for your
 Wagtail line.
 
-To declare a dependency directly in `pyproject.toml`, use its tag and subdirectory.
+Use the following Poetry dependency for `important_redirects` on the legacy stack.
 
 ```toml
 [tool.poetry.dependencies]
 hse-demo-important-redirects = { git = "https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git", tag = "important_redirects-v1.0.3", subdirectory = "packages/important-redirects" }
+```
+
+Use this dependency for the same module on Wagtail 7 and Django 5.
+
+```toml
+[tool.poetry.dependencies]
+hse-demo-important-redirects = { git = "https://github.com/dept-alex-costa/hse-wagtail-packages-demo.git", tag = "important_redirects-v2.0.0", subdirectory = "packages/important-redirects" }
 ```
 
 **About locks:** Poetry uses the consuming project's lockfile. pip does not read
@@ -117,9 +125,10 @@ those files make this repository's package checks reproducible.
 
 The Action validates and builds the selected module, commits any version bump
 to the selected branch and creates a **tag and GitHub Release** with a wheel
-and source archive. Tags follow `<package_name>-v<version>`. The tag annotation
-and release notes list the module version, the locked Wagtail and Django
-versions, and the Python requirement.
+and source archive. Tags use the repository-wide format
+`<package_name>-v<version>` and point to the exact release commit. The tag
+annotation and release notes list the module version, the locked Wagtail and
+Django versions, and the Python requirement.
 
 | Increment | Example |
 | --- | --- |
@@ -128,12 +137,16 @@ versions, and the Python requirement.
 | `current` | Releases the existing version if its tag does not exist yet |
 | `custom` | Uses a higher final version within the branch’s major series |
 
-Do not manually change an existing module's version in a feature PR: the
-release Action manages it. Existing tags are never overwritten.
+Keep version bumps in the release Action. It checks the branch's major series
+and rejects a tag name that already exists.
 
-Each module in each branch has its own version. A `patch` release of
-`component_lib` from `legacy-main` creates `component_lib-v1.0.5`.
-The Action checks that the version belongs to the selected branch’s series.
+For a fix to `important_redirects` on `legacy-main`, run the Action with
+`package=important_redirects` and `bump=patch` after merging the fix. Starting
+from `1.0.3`, this creates `important_redirects-v1.0.4`.
+
+For a feature in `component_lib` on `main`, use `package=component_lib` and
+`bump=minor` after merging the change. Starting from `2.0.0`, this creates
+`component_lib-v2.1.0`.
 
 ## Repository layout
 
